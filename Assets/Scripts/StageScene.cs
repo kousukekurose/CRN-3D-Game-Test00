@@ -2,46 +2,44 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using TMPro;
 using System.Collections;
+using R3;
 
 public class StageScene : MonoBehaviour
 {
-    //public Timer timer;
-    //public RankingManager rankingManager;
-
-    //public GameObject gameClearUI;
-    //public GameObject gameOverUI;
-    public GameObject gameClearArea;
-
+    [Header("Player")]
     public GameObject playerPrefab;
-    public Transform playerSpawnP;
+    private Transform currentPlayer;
+    private Rigidbody playerRb;
+    private PlayerInput playerInput;
 
-    public GameObject playerHpUI;
-
-    public TextMeshProUGUI countdownText;
-    public TextMeshProUGUI resultText;
-    public TextMeshProUGUI timeText;
-
+    [Header("Camera")]
     public Transform cameraTransform;
     public Vector3 cameraOffset = new Vector3(0, 10, -10);
 
-    private Transform currentPlayer;
-    private Rigidbody playerRb;
+    [Header("UI")]
+    public TextMeshProUGUI countdownText;
 
     private bool isGameStart = false;
 
-    public static bool startcheck = false;
-
     void Awake()
     {
-        startcheck = false;
+        // Mazeからスタート位置を受け取る
+        MazeCreator3D.OnStartPosition
+            .Subscribe(pos =>
+            {
+                SpawnPlayer(pos);
+            });
     }
 
     void Update()
     {
+        // クリックで開始
         if (!isGameStart && Mouse.current.leftButton.wasPressedThisFrame)
         {
             isGameStart = true;
-            StartCoroutine(StartGameSequence());
+
+            if (currentPlayer != null)
+                StartCoroutine(GameStartSequence());
         }
     }
 
@@ -49,31 +47,34 @@ public class StageScene : MonoBehaviour
     {
         if (currentPlayer == null || cameraTransform == null) return;
 
-        Vector3 targetPos = currentPlayer.position + cameraOffset;
+        Vector3 target = currentPlayer.position + cameraOffset;
 
         cameraTransform.position = new Vector3(
-            targetPos.x,
+            target.x,
             cameraTransform.position.y,
-            targetPos.z
+            target.z
         );
     }
 
-    IEnumerator StartGameSequence()
+    // ■ Mazeから呼ばれるスポーン
+    void SpawnPlayer(Vector3 pos)
     {
-        GameObject player = Instantiate(playerPrefab, playerSpawnP.position, Quaternion.identity);
+        Debug.Log("Spawn呼ばれた: " + pos);
+        GameObject player = Instantiate(playerPrefab, pos, Quaternion.identity);
+
         currentPlayer = player.transform;
-
-        playerHpUI.SetActive(true);
-
         playerRb = player.GetComponent<Rigidbody>();
-        PlayerInput input = player.GetComponent<PlayerInput>();
-        //Player p = player.GetComponent<Player>();
+        playerInput = player.GetComponent<PlayerInput>();
+    }
 
-        // 停止（3D版）
-        if (input) input.enabled = false;
-       // if (p) p.enabled = false;
+    // ■ ゲーム開始演出
+    IEnumerator GameStartSequence()
+    {
+        // 一旦停止
+        if (playerInput) playerInput.enabled = false;
         if (playerRb) playerRb.isKinematic = true;
 
+        // カウントダウン
         for (int i = 3; i > 0; i--)
         {
             countdownText.text = i.ToString();
@@ -82,15 +83,11 @@ public class StageScene : MonoBehaviour
 
         countdownText.text = "GO!";
         yield return new WaitForSeconds(1f);
+
         countdownText.gameObject.SetActive(false);
 
-        startcheck = true;
-
         // 再開
-        if (input) input.enabled = true;
-        //if (p) p.enabled = true;
+        if (playerInput) playerInput.enabled = true;
         if (playerRb) playerRb.isKinematic = false;
-
-        //timer.StratTimer();
     }
 }

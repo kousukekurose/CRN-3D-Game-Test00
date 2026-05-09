@@ -1,8 +1,12 @@
+using R3;
 using System;
 using UnityEngine;
 
 public class MazeCreator3D : MonoBehaviour
 {
+    //public static readonly Subject<Vector3> OnStartPosition = new();
+    public static readonly ReplaySubject<Vector3> OnStartPosition = new(1);
+    public static readonly Subject<Vector3> OnGoalPosition = new();
     public int width = 21;
     public int depth = 21;
 
@@ -12,7 +16,7 @@ public class MazeCreator3D : MonoBehaviour
 
     public float cellSize = 1f;
 
-    // ★追加：高さ調整用
+    //高さ調整用
     public float wallHeight = 2f;
 
     int[,] maze;
@@ -77,6 +81,20 @@ public class MazeCreator3D : MonoBehaviour
 
     void Build()
     {
+        Vector3 startPos = new Vector3 (
+            1* cellSize,
+            0,
+            1* cellSize
+         );
+
+        Vector3 goalPos = new Vector3(
+            (width - 2) * cellSize, 
+            0, 
+            (depth - 2) * cellSize
+         );
+
+        OnStartPosition.OnNext(startPos);
+        OnGoalPosition.OnNext(goalPos);
         for (int x = 0; x < width; x++)
             for (int z = 0; z < depth; z++)
             {
@@ -87,18 +105,17 @@ public class MazeCreator3D : MonoBehaviour
                         0,
                         z * cellSize
                     );
-
                     GameObject wall = Instantiate(wallObj, pos, Quaternion.identity, transform);
 
-                    // ★高さ調整ここ
+                    //高さ調整
                     wall.transform.localScale = new Vector3(1, wallHeight, 1);
 
-                    // ★地面から浮かせる（重要）
+                    // ★地面から浮かせる
                     wall.transform.position += Vector3.up * (wallHeight / 2f);
                 }
             }
 
-        Instantiate(startObj, new Vector3(1 * cellSize, 0, 1 * cellSize), Quaternion.identity);
-        Instantiate(goalObj, new Vector3((width - 2) * cellSize, 0, (depth - 2) * cellSize), Quaternion.identity);
+        Instantiate(startObj, startPos, Quaternion.identity);
+        Instantiate(goalObj, goalPos, Quaternion.identity);
     }
 }
